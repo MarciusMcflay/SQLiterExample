@@ -30,52 +30,57 @@ import info.androidhive.sqlite.utils.RecyclerTouchListener;
  * Created by DEV005 on 5/3/2018.
  */
 
-public class NotesActivity {
+public class NotesActivity extends AppCompatActivity{
     private NotesAdapter mAdapter;
     private List<Note> notesList = new ArrayList<>();
     private CoordinatorLayout coordinatorLayout;
     private RecyclerView recyclerView;
     private TextView noNotesView;
+    private DatabaseHelper db;
 
-    protected void onCreate(final AppCompatActivity myContext, final DatabaseHelper db) {
-        coordinatorLayout = myContext.findViewById(R.id.coordinator_layout);
-        recyclerView = myContext.findViewById(R.id.recycler_view);
-        noNotesView = myContext.findViewById(R.id.empty_notes_view);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        coordinatorLayout = findViewById(R.id.coordinator_layout);
+        recyclerView = findViewById(R.id.recycler_view);
+        noNotesView = findViewById(R.id.empty_notes_view);
+
+        db = MainActivity.getDB(new DatabaseHelper(this));
 
         notesList.addAll(db.getAllNotes());
 
-        FloatingActionButton fab = (FloatingActionButton) myContext.findViewById(R.id.fab);
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showNoteDialog(false, null, -1, myContext, db);
+                showNoteDialog(false, null, -1);
             }
         });
 
-        mAdapter = new NotesAdapter(myContext, notesList);
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(myContext.getApplicationContext());
+        mAdapter = new NotesAdapter(this, notesList);
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-        recyclerView.addItemDecoration(new MyDividerItemDecoration(myContext, LinearLayoutManager.VERTICAL, 16));
+        recyclerView.addItemDecoration(new MyDividerItemDecoration(this, LinearLayoutManager.VERTICAL, 16));
         recyclerView.setAdapter(mAdapter);
 
-        toggleEmptyNotes(db);
+        toggleEmptyNotes();
 
         /**
          * On long press on RecyclerView item, open alert dialog
          * with options to choose
          * Edit and Delete
          * */
-        recyclerView.addOnItemTouchListener(new RecyclerTouchListener(myContext,
+        recyclerView.addOnItemTouchListener(new RecyclerTouchListener(this,
                 recyclerView, new RecyclerTouchListener.ClickListener() {
             @Override
             public void onClick(View view, final int position) {
-                showActionsDialog(position, myContext, db);
+                showActionsDialog(position);
             }
 
             @Override
             public void onLongClick(View view, int position) {
-                showActionsDialog(position, myContext, db);
+                showActionsDialog(position);
             }
         }));
     }
@@ -84,7 +89,7 @@ public class NotesActivity {
      * Inserting new note in db
      * and refreshing the list
      */
-    private void createNote(String note, final DatabaseHelper db) {
+    private void createNote(String note) {
         // inserting note in db and getting
         // newly inserted note id
         long id = db.insertNote(note);
@@ -99,7 +104,7 @@ public class NotesActivity {
             // refreshing the list
             mAdapter.notifyDataSetChanged();
 
-            toggleEmptyNotes(db);
+            toggleEmptyNotes();
         }
     }
 
@@ -107,7 +112,7 @@ public class NotesActivity {
      * Updating note in db and updating
      * item in the list by its position
      */
-    private void updateNote(String note, int position, final DatabaseHelper db) {
+    private void updateNote(String note, int position) {
         Note n = notesList.get(position);
         // updating note text
         n.setNote(note);
@@ -119,14 +124,14 @@ public class NotesActivity {
         notesList.set(position, n);
         mAdapter.notifyItemChanged(position);
 
-        toggleEmptyNotes(db);
+        toggleEmptyNotes();
     }
 
     /**
      * Deleting note from SQLite and removing the
      * item from the list by its position
      */
-    private void deleteNote(int position, final DatabaseHelper db) {
+    private void deleteNote(int position) {
         // deleting the note from db
         db.deleteNote(notesList.get(position));
 
@@ -134,7 +139,7 @@ public class NotesActivity {
         notesList.remove(position);
         mAdapter.notifyItemRemoved(position);
 
-        toggleEmptyNotes(db);
+        toggleEmptyNotes();
     }
 
     /**
@@ -142,18 +147,18 @@ public class NotesActivity {
      * Edit - 0
      * Delete - 0
      */
-    private void showActionsDialog(final int position, final AppCompatActivity myContext, final DatabaseHelper db) {
+    private void showActionsDialog(final int position) {
         CharSequence colors[] = new CharSequence[]{"Edit", "Delete"};
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(myContext);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Choose option");
         builder.setItems(colors, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (which == 0) {
-                    showNoteDialog(true, notesList.get(position), position, myContext, db);
+                    showNoteDialog(true, notesList.get(position), position);
                 } else {
-                    deleteNote(position, db);
+                    deleteNote(position);
                 }
             }
         });
@@ -167,16 +172,16 @@ public class NotesActivity {
      * when shouldUpdate=true, it automatically displays old note and changes the
      * button text to UPDATE
      */
-    private void showNoteDialog(final boolean shouldUpdate, final Note note, final int position, final AppCompatActivity myContext, final DatabaseHelper db) {
-        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(myContext.getApplicationContext());
+    private void showNoteDialog(final boolean shouldUpdate, final Note note, final int position) {
+        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
         View view = layoutInflaterAndroid.inflate(R.layout.note_dialog, null);
 
-        AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(myContext);
+        AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(this);
         alertDialogBuilderUserInput.setView(view);
 
         final EditText inputNote = view.findViewById(R.id.note);
         TextView dialogTitle = view.findViewById(R.id.dialog_title);
-        dialogTitle.setText(!shouldUpdate ? myContext.getString(R.string.lbl_new_note_title) : myContext.getString(R.string.lbl_edit_note_title));
+        dialogTitle.setText(!shouldUpdate ? getString(R.string.lbl_new_note_title) : getString(R.string.lbl_edit_note_title));
 
         if (shouldUpdate && note != null) {
             inputNote.setText(note.getNote());
@@ -203,7 +208,7 @@ public class NotesActivity {
             public void onClick(View v) {
                 // Show toast message when no text is entered
                 if (TextUtils.isEmpty(inputNote.getText().toString())) {
-                    Toast.makeText(myContext, "Enter note!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "Enter note!", Toast.LENGTH_SHORT).show();
                     return;
                 } else {
                     alertDialog.dismiss();
@@ -212,10 +217,10 @@ public class NotesActivity {
                 // check if user updating note
                 if (shouldUpdate && note != null) {
                     // update note by it's id
-                    updateNote(inputNote.getText().toString(), position, db);
+                    updateNote(inputNote.getText().toString(), position);
                 } else {
                     // create new note
-                    createNote(inputNote.getText().toString(), db);
+                    createNote(inputNote.getText().toString());
                 }
             }
         });
@@ -224,7 +229,7 @@ public class NotesActivity {
     /**
      * Toggling list and empty notes view
      */
-    private void toggleEmptyNotes( final DatabaseHelper db) {
+    private void toggleEmptyNotes() {
         // you can check notesList.size() > 0
 
         if (db.getNotesCount() > 0) {
